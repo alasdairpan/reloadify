@@ -7,7 +7,6 @@ Reloadify is a Rust library designed to facilitate automatic reloading of config
 - [x] **Automatic Reloading**: Detects changes in configuration files and automatically reloads them.
 - [x] **Supports Multiple Formats**: Works with JSON, TOML, XML, and more.
 - [x] **Easy Integration**: Designed for seamless integration into Rust applications.
-- [ ] **Customizable**: Allows customization of file watching strategies and reload behaviors.
 - [x] **Live Changes**: Returns a configuration receiving channel. When the configuration changes, the caller will receive latest configuration.
 
 ## Installation 🚀
