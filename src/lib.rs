@@ -68,7 +68,7 @@ pub enum ReloadifyError {
     #[error("Failed to acquire lock")]
     GetLockError,
     #[error("Failed to load config: {0}")]
-    LoadConfigError(#[from] Box<dyn std::error::Error>),
+    LoadConfigError(#[from] std::io::Error),
     #[error("Failed to deserialize config: {0}")]
     DeserializeError(String),
     #[error("Failed to watch: {0}")]
@@ -190,8 +190,7 @@ impl Reloadify {
             feature = "ini"
         ))]
         {
-            let content = fs::read_to_string(path)
-                .map_err(|err| ReloadifyError::LoadConfigError(Box::new(err)))?;
+            let content = fs::read_to_string(path).map_err(ReloadifyError::LoadConfigError)?;
             match format {
                 #[cfg(feature = "json")]
                 Format::Json => serde_json::from_str::<C>(&content)
