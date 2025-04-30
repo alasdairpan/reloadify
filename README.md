@@ -88,6 +88,18 @@ For detailed usage instructions and API reference, see the [documentation](https
 
 Contributions are welcome! Please fork the repository and submit a pull request with your changes.
 
+## Continuous Integration 🔄
+
+This project uses GitHub Actions for CI/CD. The pipeline includes:
+
+- Running tests on multiple platforms (Ubuntu, Windows, macOS)
+- Testing against different Rust versions (stable, beta, nightly)
+- Code formatting checks with `rustfmt`
+- Linting with `clippy`
+- Security audits with `cargo-audit`
+- Documentation generation and deployment
+
+
 ## License 📝
 
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
