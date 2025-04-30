@@ -114,8 +114,7 @@ impl Reloadify {
         let initial_cfg =
             self.load::<C>(reloadable_config.path.as_path(), &reloadable_config.format)?;
         let (tx, rx) = channel();
-        tx.send(initial_cfg.clone())
-            .map_err(|_| ReloadifyError::SendError)?;
+        tx.send(initial_cfg.clone()).map_err(|_| ReloadifyError::SendError)?;
 
         let c = reloadable_config.clone();
         let s = self.clone();
@@ -139,17 +138,13 @@ impl Reloadify {
         .map_err(ReloadifyError::WatchError)?;
 
         watcher
-            .watch(
-                reloadable_config.path.as_path(),
-                notify::RecursiveMode::NonRecursive,
-            )
+            .watch(reloadable_config.path.as_path(), notify::RecursiveMode::NonRecursive)
             .map_err(ReloadifyError::WatchError)?;
 
         let mut guard = self.0.write().map_err(|_| ReloadifyError::GetLockError)?;
-        guard.entry(reloadable_config.id).or_insert(Config {
-            value: Box::new(initial_cfg),
-            _watcher: watcher,
-        });
+        guard
+            .entry(reloadable_config.id)
+            .or_insert(Config { value: Box::new(initial_cfg), _watcher: watcher });
 
         Ok(rx)
     }
@@ -172,11 +167,11 @@ impl Reloadify {
             Err(_) => Err(ReloadifyError::GetLockError),
             Ok(guard) => Ok(guard
                 .get(&config_id)
-                .ok_or_else(|| ReloadifyError::ConfigNotExist)?
+                .ok_or(ReloadifyError::ConfigNotExist)?
                 .value
                 .downcast_ref::<C>()
                 .cloned()
-                .ok_or_else(|| ReloadifyError::DowncastError)?),
+                .ok_or(ReloadifyError::DowncastError)?),
         }
     }
 
@@ -217,8 +212,6 @@ impl Reloadify {
             feature = "xml",
             feature = "ini"
         )))]
-        Err(ReloadifyError::DeserializeError(
-            "No format feature enabled".to_string(),
-        ))
+        Err(ReloadifyError::DeserializeError("No format feature enabled".to_string()))
     }
 }
