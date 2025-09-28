@@ -18,13 +18,6 @@ To use Reloadify in your Rust project, simply add it to your `Cargo.toml`:
 reloadify = "0.1"
 ```
 
-If you want to use the latest version, you can import it like this:
-
-```toml
-[dependencies]
-reloadify = { git = "ssh://git@github.com/trayvonpan/reloadify.git", branch = "main" }
-```
-
 ## Usage 🛠️
 
 Here's a basic example demonstrating how to use Reloadify to automatically reload a JSON configuration file:
@@ -98,7 +91,6 @@ This project uses GitHub Actions for CI/CD. The pipeline includes:
 - Linting with `clippy`
 - Security audits with `cargo-audit`
 - Documentation generation and deployment
-
 
 ## License 📝
 
