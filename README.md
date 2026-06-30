@@ -18,6 +18,8 @@ To use Reloadify in your Rust project, simply add it to your `Cargo.toml`:
 reloadify = "0.1"
 ```
 
+**Minimum Supported Rust Version (MSRV):** 1.77
+
 ## Usage 🛠️
 
 Here's a basic example demonstrating how to use Reloadify to automatically reload a JSON configuration file:
