@@ -96,11 +96,6 @@ impl Reloadify {
         Self(Arc::new(RwLock::new(HashMap::new())))
     }
 
-    /// Creates a default `Reloadify` instance.
-    pub fn default() -> Self {
-        Self::new()
-    }
-
     /// Adds a reloadable configuration to the `Reloadify` instance.
     ///
     /// # Arguments
@@ -218,6 +213,12 @@ impl Reloadify {
             feature = "ini"
         )))]
         Err(ReloadifyError::DeserializeError("No format feature enabled".to_string()))
+    }
+}
+
+impl Default for Reloadify {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
