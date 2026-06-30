@@ -1,5 +1,3 @@
-#[allow(unused_imports)]
-use if_chain::if_chain;
 use notify::{
     event::{DataChange, ModifyKind},
     Error, Event, EventKind, RecommendedWatcher, Watcher,
@@ -120,18 +118,18 @@ impl Reloadify {
         let s = self.clone();
         let mut watcher = RecommendedWatcher::new(
             move |r: Result<Event, Error>| {
-                if_chain!(
-                    if let Ok(event) = r;
-                    if let EventKind::Modify(ModifyKind::Data(chg)) = event.kind;
-                    if chg == DataChange::Content;
-                    if let Ok(latest_cfg) = s.load::<C>(c.path.as_path(), &c.format);
-                    if let Ok(mut guard) = s.0.write();
-                    if let Some(current_cfg) = guard.get_mut(&c.id);
-                    then {
-                        current_cfg.value = Box::new(latest_cfg.clone());
-                        let _ = tx.send(latest_cfg);
+                if let Ok(event) = r {
+                    if let EventKind::Modify(ModifyKind::Data(DataChange::Content)) = event.kind {
+                        if let Ok(latest_cfg) = s.load::<C>(c.path.as_path(), &c.format) {
+                            if let Ok(mut guard) = s.0.write() {
+                                if let Some(current_cfg) = guard.get_mut(&c.id) {
+                                    current_cfg.value = Box::new(latest_cfg.clone());
+                                    let _ = tx.send(latest_cfg);
+                                }
+                            }
+                        }
                     }
-                );
+                }
             },
             notify::Config::default().with_poll_interval(reloadable_config.poll_interval),
         )
