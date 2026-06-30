@@ -1,4 +1,4 @@
-use reloadify::{ConfigId, Format, ReloadableConfig, Reloadify};
+use reloadify::{Format, ReloadableConfig, Reloadify};
 use std::{path::PathBuf, str::FromStr, time::Duration};
 
 const COMPOSE_CONFIG_ID: &str = "docker-compose";
@@ -8,21 +8,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reloadify = Reloadify::new();
 
     reloadify.add::<compose::ComposeConfig>(ReloadableConfig {
-        id: ConfigId::new(COMPOSE_CONFIG_ID),
+        id: COMPOSE_CONFIG_ID.into(),
         path: PathBuf::from_str("examples/config/docker-compose.yaml")?,
         format: Format::Yaml,
         poll_interval: Duration::from_secs(1),
     })?;
     reloadify.add::<pytest::PyTestConfig>(ReloadableConfig {
-        id: ConfigId::new(PYTEST_CONFIG_ID),
+        id: PYTEST_CONFIG_ID.into(),
         path: PathBuf::from_str("examples/config/pytest.ini")?,
         format: Format::Ini,
         poll_interval: Duration::from_millis(100),
     })?;
 
-    let compose_config =
-        reloadify.get::<compose::ComposeConfig>(ConfigId::new(COMPOSE_CONFIG_ID))?;
-    let pytest_config = reloadify.get::<pytest::PyTestConfig>(ConfigId::new(PYTEST_CONFIG_ID))?;
+    let compose_config = reloadify.get::<compose::ComposeConfig>(COMPOSE_CONFIG_ID)?;
+    let pytest_config = reloadify.get::<pytest::PyTestConfig>(PYTEST_CONFIG_ID)?;
 
     // Do something with compose_config and pytest_config...
     println!("compose_config={compose_config:?}\npytest_config={pytest_config:?}");

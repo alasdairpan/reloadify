@@ -1,4 +1,4 @@
-use reloadify::{ConfigId, Format, ReloadableConfig, Reloadify};
+use reloadify::{Format, ReloadableConfig, Reloadify};
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, str::FromStr, time::Duration};
 
@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reloadify = Reloadify::new();
 
     let rx = reloadify.add::<TsConfig>(ReloadableConfig {
-        id: ConfigId::new(TS_CONFIG_ID),
+        id: TS_CONFIG_ID.into(),
         path: PathBuf::from_str("examples/config/tsconfig.spec.json")?,
         format: Format::Json,
         poll_interval: Duration::from_secs(1),
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let ts_config = reloadify.get::<TsConfig>(ConfigId::new(TS_CONFIG_ID))?;
+    let ts_config = reloadify.get::<TsConfig>(TS_CONFIG_ID)?;
 
     // Do something with ts_config...
     println!("{:?}", ts_config);
