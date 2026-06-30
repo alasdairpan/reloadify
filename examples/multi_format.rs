@@ -11,12 +11,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         id: COMPOSE_CONFIG_ID.into(),
         path: PathBuf::from_str("examples/config/docker-compose.yaml")?,
         format: Format::Yaml,
+        debounce_delay: None,
         poll_interval: Duration::from_secs(1),
     })?;
     reloadify.add::<pytest::PyTestConfig>(ReloadableConfig {
         id: PYTEST_CONFIG_ID.into(),
         path: PathBuf::from_str("examples/config/pytest.ini")?,
         format: Format::Ini,
+        debounce_delay: None,
         poll_interval: Duration::from_millis(100),
     })?;
 
