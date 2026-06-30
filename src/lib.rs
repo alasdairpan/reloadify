@@ -19,9 +19,9 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         mpsc::{channel, Receiver},
-        Arc, RwLock,
+        Arc, Mutex, RwLock,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 #[cfg(feature = "toml")]
 use toml as serde_toml;
@@ -99,6 +99,9 @@ pub struct ReloadableConfig {
     pub path: PathBuf,
     pub format: Format,
     pub poll_interval: Duration,
+    /// Optional debounce delay. Coalesces rapid writes (e.g. editor saves)
+    /// into a single reload event.
+    pub debounce_delay: Option<Duration>,
 }
 
 impl Reloadify {
@@ -129,10 +132,21 @@ impl Reloadify {
 
         let c = reloadable_config.clone();
         let s = self.clone();
+        let debounce_delay = c.debounce_delay;
+        let last_event = Arc::new(Mutex::new(Instant::now()));
         let mut watcher = RecommendedWatcher::new(
             move |r: Result<Event, Error>| {
                 if let Ok(event) = r {
                     if let EventKind::Modify(ModifyKind::Data(DataChange::Content)) = event.kind {
+                        if let Some(delay) = debounce_delay {
+                            if let Ok(mut last) = last_event.lock() {
+                                if last.elapsed() < delay {
+                                    return;
+                                }
+                                *last = Instant::now();
+                            }
+                            // if lock is poisoned, skip debounce and reload anyway
+                        }
                         if let Ok(latest_cfg) = s.load::<C>(c.path.as_path(), &c.format) {
                             if let Ok(mut guard) = s.0.write() {
                                 if let Some(current_cfg) = guard.get_mut(&c.id) {
@@ -323,6 +337,7 @@ mod tests {
                 path: fixture("tsconfig.spec.json"),
                 format: Format::Json,
                 poll_interval: Duration::from_secs(10),
+                debounce_delay: None,
             })
             .expect("add");
         assert!(r.get::<serde_json::Value>(id.clone()).is_ok());
@@ -341,6 +356,7 @@ mod tests {
                 path: fixture("tsconfig.spec.json"),
                 format: Format::Json,
                 poll_interval: Duration::from_secs(10),
+                debounce_delay: None,
             })
             .expect("add");
         r.remove(id).expect("remove");
@@ -430,6 +446,7 @@ mod tests {
                     path: fixture("tsconfig.spec.json"),
                     format: Format::Json,
                     poll_interval: Duration::from_secs(10),
+                    debounce_delay: None,
                 })
                 .expect("add should succeed");
             let retrieved = r.get::<TsConfig>(id).expect("get should succeed");
@@ -468,6 +485,7 @@ mod tests {
                     path: fixture("docker-compose.yaml"),
                     format: Format::Yaml,
                     poll_interval: Duration::from_secs(10),
+                    debounce_delay: None,
                 })
                 .expect("add should succeed");
             let retrieved = r.get::<serde_yaml_ng::Value>(id).expect("get should succeed");
@@ -512,6 +530,7 @@ mod tests {
                     path: fixture("netlify.toml"),
                     format: Format::Toml,
                     poll_interval: Duration::from_secs(10),
+                    debounce_delay: None,
                 })
                 .expect("add should succeed");
             let retrieved = r.get::<toml::Value>(id).expect("get should succeed");
@@ -563,6 +582,7 @@ mod tests {
                     path: fixture("pytest.ini"),
                     format: Format::Ini,
                     poll_interval: Duration::from_secs(10),
+                    debounce_delay: None,
                 })
                 .expect("add should succeed");
             let retrieved = r.get::<IniMap>(id).expect("get should succeed");
@@ -628,6 +648,7 @@ mod tests {
                     path: fixture("tomcat-users.xml"),
                     format: Format::Xml,
                     poll_interval: Duration::from_secs(10),
+                    debounce_delay: None,
                 })
                 .expect("add should succeed");
             let retrieved = r.get::<TomcatUsers>(id).expect("get should succeed");
@@ -663,6 +684,7 @@ mod tests {
             path: fixture("tsconfig.spec.json"),
             format: Format::Json,
             poll_interval: Duration::from_secs(10),
+            debounce_delay: None,
         })
         .expect("add json");
 
@@ -671,6 +693,7 @@ mod tests {
             path: fixture("docker-compose.yaml"),
             format: Format::Yaml,
             poll_interval: Duration::from_secs(10),
+            debounce_delay: None,
         })
         .expect("add yaml");
 
@@ -695,6 +718,7 @@ mod tests {
                     path: fixture("tsconfig.spec.json"),
                     format: Format::Json,
                     poll_interval: Duration::from_secs(10),
+                    debounce_delay: None,
                 })
                 .expect("add should succeed");
 

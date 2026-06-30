@@ -28,6 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         path: PathBuf::from_str("examples/config/tsconfig.spec.json")?,
         format: Format::Json,
         poll_interval: Duration::from_secs(1),
+        debounce_delay: None,
     })?;
 
     // Optional: Spawn a thread to listen for the latest configuration.
