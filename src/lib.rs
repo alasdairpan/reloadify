@@ -125,15 +125,17 @@ impl Reloadify {
     where
         C: DeserializeOwned + Send + Sync + Clone + 'static,
     {
-        let initial_cfg =
-            self.load::<C>(reloadable_config.path.as_path(), &reloadable_config.format)?;
         let (tx, rx) = channel();
-        tx.send(initial_cfg.clone()).map_err(|_| ReloadifyError::SendError)?;
 
+        // Start the watcher *before* the initial load so no file-change
+        // events are lost in the window between load and watch.
         let c = reloadable_config.clone();
         let s = self.clone();
         let debounce_delay = c.debounce_delay;
         let last_event = Arc::new(Mutex::new(Instant::now()));
+        // Clone the sender so the closure can own its copy while we keep
+        // one for the initial send after the load.
+        let tx_initial = tx.clone();
         let mut watcher = RecommendedWatcher::new(
             move |r: Result<Event, Error>| {
                 if let Ok(event) = r {
@@ -151,8 +153,11 @@ impl Reloadify {
                             if let Ok(mut guard) = s.0.write() {
                                 if let Some(current_cfg) = guard.get_mut(&c.id) {
                                     current_cfg.value = Box::new(latest_cfg.clone());
-                                    let _ = tx.send(latest_cfg);
+                                    let _ = tx_initial.send(latest_cfg);
                                 }
+                                // If the entry isn't in the map yet, the
+                                // initial load below will capture the latest
+                                // state — no data loss.
                             }
                         }
                     }
@@ -165,6 +170,11 @@ impl Reloadify {
         watcher
             .watch(reloadable_config.path.as_path(), notify::RecursiveMode::NonRecursive)
             .map_err(ReloadifyError::WatchError)?;
+
+        // Load initial config after the watcher is active.
+        let initial_cfg =
+            self.load::<C>(reloadable_config.path.as_path(), &reloadable_config.format)?;
+        tx.send(initial_cfg.clone()).map_err(|_| ReloadifyError::SendError)?;
 
         let mut guard = self.0.write().map_err(|_| ReloadifyError::GetLockError)?;
         guard
