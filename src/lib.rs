@@ -44,10 +44,23 @@ pub enum Format {
 /// Represents the identifier of a configuration.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct ConfigId(String);
+
 impl ConfigId {
     /// Creates a new `ConfigId` with the given identifier.
     pub fn new<S: Into<String>>(id: S) -> Self {
         Self(id.into())
+    }
+}
+
+impl From<&str> for ConfigId {
+    fn from(s: &str) -> Self {
+        Self(s.to_owned())
+    }
+}
+
+impl From<String> for ConfigId {
+    fn from(s: String) -> Self {
+        Self(s)
     }
 }
 
@@ -157,10 +170,11 @@ impl Reloadify {
     ///
     /// Returns a result containing the deserialized configuration if it exists, or an error if the
     /// configuration does not exist or an error occurred.
-    pub fn get<C>(&self, config_id: ConfigId) -> Result<C, ReloadifyError>
+    pub fn get<C>(&self, config_id: impl Into<ConfigId>) -> Result<C, ReloadifyError>
     where
         C: DeserializeOwned + Send + Sync + Clone + 'static,
     {
+        let config_id = config_id.into();
         match self.0.read() {
             Err(_) => Err(ReloadifyError::GetLockError),
             Ok(guard) => Ok(guard
@@ -171,6 +185,21 @@ impl Reloadify {
                 .cloned()
                 .ok_or(ReloadifyError::DowncastError)?),
         }
+    }
+
+    /// Removes a configuration, stopping its file watcher.
+    ///
+    /// The [`Receiver`] channel for this config will disconnect,
+    /// causing any listening loop to exit cleanly.
+    ///
+    /// # Arguments
+    ///
+    /// * `config_id` - The identifier of the configuration to remove.
+    pub fn remove(&self, config_id: impl Into<ConfigId>) -> Result<(), ReloadifyError> {
+        let config_id = config_id.into();
+        let mut guard = self.0.write().map_err(|_| ReloadifyError::GetLockError)?;
+        guard.remove(&config_id).ok_or(ReloadifyError::ConfigNotExist)?;
+        Ok(())
     }
 
     #[allow(unused_variables)]
@@ -237,14 +266,14 @@ mod tests {
     #[test]
     fn new_and_get_nonexistent() {
         let r = Reloadify::new();
-        let result = r.get::<String>(ConfigId::new("nonexistent"));
+        let result = r.get::<String>("nonexistent");
         assert!(matches!(result, Err(ReloadifyError::ConfigNotExist)));
     }
 
     #[test]
     fn default_constructs() {
         let r = Reloadify::default();
-        assert!(r.get::<String>(ConfigId::new("any")).is_err());
+        assert!(r.get::<String>("any").is_err());
     }
 
     #[test]
@@ -257,9 +286,68 @@ mod tests {
     }
 
     #[test]
+    fn config_id_from_str() {
+        let id: ConfigId = "mycfg".into();
+        assert_eq!(id, ConfigId::new("mycfg"));
+    }
+
+    #[test]
     fn config_id_from_string() {
-        let id = ConfigId::new(String::from("owned"));
+        let id = ConfigId::from(String::from("owned"));
         assert_eq!(id, ConfigId::new("owned"));
+    }
+
+    #[test]
+    fn get_with_str_literal() {
+        let r = Reloadify::new();
+        // &str passed directly — no ConfigId::new needed
+        let result = r.get::<String>("literal-key");
+        assert!(matches!(result, Err(ReloadifyError::ConfigNotExist)));
+    }
+
+    #[test]
+    fn remove_nonexistent() {
+        let r = Reloadify::new();
+        let result = r.remove("nonexistent");
+        assert!(matches!(result, Err(ReloadifyError::ConfigNotExist)));
+    }
+
+    #[test]
+    #[cfg(feature = "json")]
+    fn remove_existing() {
+        let r = Reloadify::new();
+        let id = ConfigId::new("to-remove");
+        let _rx = r
+            .add::<serde_json::Value>(ReloadableConfig {
+                id: id.clone(),
+                path: fixture("tsconfig.spec.json"),
+                format: Format::Json,
+                poll_interval: Duration::from_secs(10),
+            })
+            .expect("add");
+        assert!(r.get::<serde_json::Value>(id.clone()).is_ok());
+        r.remove(id.clone()).expect("remove");
+        assert!(matches!(r.get::<serde_json::Value>(id), Err(ReloadifyError::ConfigNotExist)));
+    }
+
+    #[test]
+    #[cfg(feature = "json")]
+    fn remove_disconnects_receiver() {
+        let r = Reloadify::new();
+        let id = ConfigId::new("dc-test");
+        let rx = r
+            .add::<serde_json::Value>(ReloadableConfig {
+                id: id.clone(),
+                path: fixture("tsconfig.spec.json"),
+                format: Format::Json,
+                poll_interval: Duration::from_secs(10),
+            })
+            .expect("add");
+        r.remove(id).expect("remove");
+        // After remove, the channel should be disconnected.
+        // Drain initial value first, then next recv should error.
+        let _ = rx.try_recv(); // initial value
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]
