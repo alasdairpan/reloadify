@@ -17,7 +17,7 @@ ini = ["dep:serde_ini"]
 json = ["dep:serde_json"]
 toml = ["dep:toml"]
 xml = ["dep:serde-xml-rs"]
-yaml = ["dep:serde_yaml"]
+yaml = ["dep:serde_yaml_ng"]
 
 [dependencies]
 notify = "6.1"
@@ -25,6 +25,6 @@ serde = {version = "1.0", features = ["derive"]}
 serde-xml-rs = {version = "0.6", optional = true}
 serde_ini = {version = "0.2", optional = true}
 serde_json = {version = "1.0", optional = true}
-serde_yaml = {version = "0.9", optional = true}
+serde_yaml_ng = {version = "0.10", optional = true}
 thiserror = "1.0"
 toml = {version = "0.8", optional = true}
