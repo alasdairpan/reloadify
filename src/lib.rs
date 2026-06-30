@@ -189,7 +189,7 @@ impl Reloadify {
                 Format::Json => serde_json::from_str::<C>(&content)
                     .map_err(|err| ReloadifyError::DeserializeError(err.to_string())),
                 #[cfg(feature = "yaml")]
-                Format::Yaml => serde_yaml::from_str::<C>(&content)
+                Format::Yaml => serde_yaml_ng::from_str::<C>(&content)
                     .map_err(|err| ReloadifyError::DeserializeError(err.to_string())),
                 #[cfg(feature = "toml")]
                 Format::Toml => serde_toml::from_str::<C>(&content)
@@ -363,7 +363,7 @@ mod tests {
         #[test]
         fn load_yaml_file() {
             let r = Reloadify::new();
-            let cfg: serde_yaml::Value = r
+            let cfg: serde_yaml_ng::Value = r
                 .load(&fixture("docker-compose.yaml"), &Format::Yaml)
                 .expect("should load YAML config");
             let services = cfg.get("services").expect("should have services key");
@@ -375,21 +375,21 @@ mod tests {
             let r = Reloadify::new();
             let id = ConfigId::new("compose");
             let _rx = r
-                .add::<serde_yaml::Value>(ReloadableConfig {
+                .add::<serde_yaml_ng::Value>(ReloadableConfig {
                     id: id.clone(),
                     path: fixture("docker-compose.yaml"),
                     format: Format::Yaml,
                     poll_interval: Duration::from_secs(10),
                 })
                 .expect("add should succeed");
-            let retrieved = r.get::<serde_yaml::Value>(id).expect("get should succeed");
+            let retrieved = r.get::<serde_yaml_ng::Value>(id).expect("get should succeed");
             assert!(retrieved.get("services").is_some());
         }
 
         #[test]
         fn load_missing_file() {
             let r = Reloadify::new();
-            let result = r.load::<serde_yaml::Value>(
+            let result = r.load::<serde_yaml_ng::Value>(
                 &PathBuf::from("/nonexistent/reloadify_test.yaml"),
                 &Format::Yaml,
             );
@@ -578,7 +578,7 @@ mod tests {
         })
         .expect("add json");
 
-        r.add::<serde_yaml::Value>(ReloadableConfig {
+        r.add::<serde_yaml_ng::Value>(ReloadableConfig {
             id: yaml_id.clone(),
             path: fixture("docker-compose.yaml"),
             format: Format::Yaml,
@@ -587,7 +587,7 @@ mod tests {
         .expect("add yaml");
 
         let json_cfg = r.get::<serde_json::Value>(json_id).expect("get json");
-        let yaml_cfg = r.get::<serde_yaml::Value>(yaml_id).expect("get yaml");
+        let yaml_cfg = r.get::<serde_yaml_ng::Value>(yaml_id).expect("get yaml");
 
         assert!(json_cfg.get("extends").is_some());
         assert!(yaml_cfg.get("services").is_some());
